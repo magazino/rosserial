@@ -89,7 +89,7 @@ endfunction()
 function(rosserial_add_client_target client_directory client_target)
   add_custom_target(${PROJECT_NAME}_${client_directory}_${client_target} ${ARGN}
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/${client_directory}
-    COMMAND ${CMAKE_COMMAND} --build ${PROJECT_BINARY_DIR}/${client_directory} -- ${client_target}
+    COMMAND ${CMAKE_COMMAND} --build ${PROJECT_BINARY_DIR}/${client_directory} -- ${client_target} install
   )
   add_dependencies(${PROJECT_NAME}_${client_directory}_${client_target}
                    ${PROJECT_NAME}_${client_directory})
