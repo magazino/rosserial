@@ -34,10 +34,20 @@ function(create_arduino_bootloader_upload_target TARGET_NAME BOARD_ID PORT AVRDU
 
     list(APPEND AVRDUDE_ARGS "-Uflash:w:\"${TARGET_PATH}.hex\":i")
     list(APPEND AVRDUDE_ARGS "-Ueeprom:w:\"${TARGET_PATH}.eep\":i")
+    
+    _try_get_board_property(${BOARD_ID} upload.use_1200bps_touch USE_1200BPS_TOUCH)
+    if (USE_1200BPS_TOUCH)  
+        set(RESET_TARGET ${TARGET_NAME}-reset) 
+        add_custom_target(${RESET_TARGET}
+                          COMMAND stty -F ${PORT} ispeed 1200 ospeed 1200 
+                          COMMAND sleep 2
+                          COMMENT "Resseting board ${BOARD_ID} for flashing.")
+    endif ()
+
     add_custom_target(${UPLOAD_TARGET}
-            ${ARDUINO_AVRDUDE_PROGRAM}
-            ${AVRDUDE_ARGS}
-            DEPENDS ${TARGET_NAME})
+                      ${ARDUINO_AVRDUDE_PROGRAM}
+                      ${AVRDUDE_ARGS}
+                      DEPENDS ${TARGET_NAME} ${RESET_TARGET})
 
     # Global upload target
     if (NOT TARGET upload)
