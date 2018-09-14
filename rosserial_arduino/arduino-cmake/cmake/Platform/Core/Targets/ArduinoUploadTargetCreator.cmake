@@ -1,5 +1,5 @@
 include(ArduinoBootloaderUploadTargetCreator)
-
+include(ArduinoBootloaderUploadInstallToolsTargetCreator)
 #=============================================================================#
 # create_arduino_upload_target
 # [PRIVATE/INTERNAL]
@@ -17,6 +17,7 @@ include(ArduinoBootloaderUploadTargetCreator)
 #=============================================================================#
 function(create_arduino_upload_target BOARD_ID TARGET_NAME PORT PROGRAMMER_ID AVRDUDE_FLAGS)
     create_arduino_bootloader_upload_target(${TARGET_NAME} ${BOARD_ID} ${PORT} "${AVRDUDE_FLAGS}")
+    create_arduino_bootloader_install_tools_target(${TARGET_NAME} ${BOARD_ID} ${PORT} "${AVRDUDE_FLAGS}")
 
     # Add programmer support if defined
     if (PROGRAMMER_ID AND ${PROGRAMMER_ID}.protocol)

@@ -20,11 +20,17 @@ function(create_arduino_bootloader_burn_target TARGET_NAME BOARD_ID PROGRAMMER P
 
     set(AVRDUDE_ARGS)
 
-    build_arduino_programmer_arguments(${BOARD_ID} ${PROGRAMMER} ${TARGET_NAME} ${PORT} "${AVRDUDE_FLAGS}" AVRDUDE_ARGS)
-
+    build_arduino_programmer_arguments(${BOARD_ID} ${PROGRAMMER} ${TARGET_NAME} "\$1" "${AVRDUDE_FLAGS}" AVRDUDE_ARGS)
     if (NOT AVRDUDE_ARGS)
         message("Could not generate default avrdude programmer args, aborting!")
         return()
+    endif ()
+    #replace the avrdude.conf file path to relative for installation
+    string(REPLACE "${ARDUINO_AVRDUDE_CONFIG_PATH}" "avrdude.conf" AVRDUDE_ARGS "${AVRDUDE_ARGS}")
+
+    # This is set by the configure client directory
+    if (NOT EXECUTABLE_OUTPUT_PATH)
+        set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR})
     endif ()
 
     # look at bootloader.file
@@ -58,7 +64,6 @@ function(create_arduino_bootloader_burn_target TARGET_NAME BOARD_ID PROGRAMMER P
 
     # Erase the chip
     list(APPEND AVRDUDE_ARGS "-e")
-
     # Set unlock bits and fuses (because chip is going to be erased)
     list(APPEND AVRDUDE_ARGS "-Ulock:w:${BOOTLOADER_unlock_bits}:m")
     # extended fuses is optional
@@ -68,15 +73,31 @@ function(create_arduino_bootloader_burn_target TARGET_NAME BOARD_ID PROGRAMMER P
     endif()
 
     list(APPEND AVRDUDE_ARGS
-            "-Uhfuse:w:${BOOTLOADER_high_fuses}:m"
-            "-Ulfuse:w:${BOOTLOADER_low_fuses}:m"
-            "-Uflash:w:${BOOTLOADER_FILE_NAME}:i"
-            "-Ulock:w:${BOOTLOADER_lock_bits}:m")
+        "-Uhfuse:w:${BOOTLOADER_high_fuses}:m"
+        "-Ulfuse:w:${BOOTLOADER_low_fuses}:m"
+        "-Uflash:w:${BOOTLOADER_FILE_NAME}:i"
+        "-Ulock:w:${BOOTLOADER_lock_bits}:m")
+
+    configure_file(${ARDUINO_BOOTLOADERS_PATH}/${BOOTLOADER_PATH}/${BOOTLOADER_FILE_NAME} ${EXECUTABLE_OUTPUT_PATH}/${BOOTLOADER_FILE_NAME} COPYONLY)
+
+    set(BURN_BOOTLOADER_SCRIPT flash_bootloader_${TARGET_NAME})
+    add_custom_command(OUTPUT ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo "#!/bin/bash" > ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo "# This is an auto generated file from arduino-cmake ToolChain" >> ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo if [ -z \$1 ] >> ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo "then echo No port given, exitining" >> ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo exit 1 >> ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo fi >> ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND echo avrdude ${AVRDUDE_ARGS} >> ${BURN_BOOTLOADER_SCRIPT}
+            COMMAND chmod u+x ${BURN_BOOTLOADER_SCRIPT}
+            WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+            COMMENT "Generating bootloader burn script"
+            VERBATIM)
 
     # Create burn bootloader target
     add_custom_target(${BOOTLOADER_TARGET}
-            ${ARDUINO_AVRDUDE_PROGRAM}
-            ${AVRDUDE_ARGS}
-            WORKING_DIRECTORY ${ARDUINO_BOOTLOADERS_PATH}/${BOOTLOADER_PATH}
-            DEPENDS ${TARGET_NAME})
+            WORKING_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+            DEPENDS ${TARGET_NAME} ${BURN_BOOTLOADER_SCRIPT}
+            COMMENT "building bootloader burn target"
+            VERBATIM)
 endfunction()
